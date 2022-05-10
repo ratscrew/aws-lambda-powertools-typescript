@@ -1,5 +1,6 @@
-import { DEFAULT_PROVIDERS ,BaseProvider } from './BaseProvider';
-import { SSMClient, GetParameterCommand, GetParametersByPathCommand, SSMClientConfig } from '@aws-sdk/client-ssm';
+import { BaseProvider } from './BaseProvider';
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
+import type { SSMClientConfig } from '@aws-sdk/client-ssm';
 
 class SSMProvider extends BaseProvider {
   public client: SSMClient;

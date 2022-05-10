@@ -35,9 +35,9 @@ class GetMultipleOptions implements GetMultipleOptionsInterface {
 abstract class BaseProvider implements ClassForBaseProvider {
   public store: Map<string, ExpirableValue> = new Map;
   
-  abstract _get(name: string, sdkOptions?: unknown): Promise<string | undefined>;
+  public abstract _get(name: string, sdkOptions?: unknown): Promise<string | undefined>;
 
-  abstract _getMultiple(path: string, sdkOptions?: unknown): Promise<Record<string, string|undefined>>;
+  public abstract _getMultiple(path: string, sdkOptions?: unknown): Promise<Record<string, string|undefined>>;
   
   public async get(name: string, options?: GetOptionsInterface): Promise<void | string | Record<string, unknown>> {
     const configs = new GetOptions(options || {});
@@ -51,7 +51,7 @@ abstract class BaseProvider implements ClassForBaseProvider {
     try {
       value = await this._get(name, options?.sdkOptions);
     } catch (error) {
-      throw Error(error);
+      throw error;
     }
 
     if (value !== undefined && configs.transform !== undefined) {
@@ -81,7 +81,7 @@ abstract class BaseProvider implements ClassForBaseProvider {
     try {
       values = await this._getMultiple(path, options?.sdkOptions);
     } catch (error) {
-      throw Error(error);
+      throw error;
     }
 
     if (configs.transform !== undefined) {
@@ -152,7 +152,7 @@ const transformValue = (value: string, transform: string, throwOnTransformError:
     }
   } catch (error) {
     if (throwOnTransformError) {
-      throw Error(error);
+      throw error;
     }
     
     return;
