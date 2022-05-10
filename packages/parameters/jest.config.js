@@ -1,8 +1,9 @@
 module.exports = {
   displayName: {
-    name: 'AWS Lambda Powertools utility: PARAMETERS',
+    name: 'AWS Lambda Powertools utility: TRACER',
     color: 'cyan',
   },
+  'runner': 'groups',
   'preset': 'ts-jest',
   'transform': {
     '^.+\\.ts?$': 'ts-jest',
@@ -23,6 +24,7 @@ module.exports = {
   'testEnvironment': 'node',
   'coveragePathIgnorePatterns': [
     '/node_modules/',
+    '/types/',
   ],
   'coverageThreshold': {
     'global': {
@@ -37,5 +39,7 @@ module.exports = {
     'text',
     'lcov'
   ],
-  'setupFiles': []
+  'setupFiles': [
+    '<rootDir>/tests/helpers/populateEnvironmentVariables.ts'
+  ]
 };

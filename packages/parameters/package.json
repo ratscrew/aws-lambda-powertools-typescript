@@ -8,34 +8,27 @@
     },
     "scripts": {
         "commit": "commit",
-        "test": "jest  --detectOpenHandles --coverage --verbose",
+        "test": "npm run test:unit",
+        "test:unit": "jest --group=unit --detectOpenHandles --coverage --verbose",
+        "test:e2e:nodejs12x": "RUNTIME=nodejs12x jest --group=e2e",
+        "test:e2e:nodejs14x": "RUNTIME=nodejs14x jest --group=e2e",
+        "test:e2e": "jest --group=e2e",
         "watch": "jest --watch",
         "build": "tsc",
-        "lint": "eslint \"./{src,tests}/**/*.ts\"",
-        "format": "eslint --fix \"./{src,tests}/**/*.ts\"",
+        "lint": "eslint --ext .ts --fix --no-error-on-unmatched-pattern src tests",
+        "format": "eslint --fix --ext .ts --fix --no-error-on-unmatched-pattern src tests",
         "prepare": "npm run build",
         "prepublishOnly": "npm test && npm run lint",
         "preversion": "npm run lint",
         "version": "npm run format && git add -A src",
         "postversion": "git push && git push --tags",
-        "example:dynamodb-provider": "ts-node examples/dynamodb-provider.ts"
+        "package": "mkdir -p dist/ && npm pack && mv *.tgz dist/"
     },
-    "homepage": "https://github.com/awslabs/aws-lambda-powertools-typescript/tree/master/packages/parameters#readme",
-    "license": "MIT",
+    "homepage": "https://github.com/awslabs/aws-lambda-powertools-typescript/tree/master/packages/tracer#readme",
+    "license": "MIT-0",
     "main": "./lib/index.js",
     "types": "./lib/index.d.ts",
-    "devDependencies": {
-        "@types/aws-lambda": "^8.10.72",
-        "@types/jest": "^26.0.19",
-        "@types/node": "^16.0.0",
-        "@typescript-eslint/eslint-plugin": "^4.11.1",
-        "@typescript-eslint/parser": "^4.11.1",
-        "eslint": "^7.16.0",
-        "jest": "^27.0.4",
-        "ts-jest": "^27.0.3",
-        "ts-node": "^10.0.0",
-        "typescript": "^4.1.3"
-    },
+    "devDependencies": {},
     "files": [
         "lib"
     ],
@@ -47,10 +40,10 @@
         "url": "https://github.com/awslabs/aws-lambda-powertools-typescript/issues"
     },
     "dependencies": {
-        "@aws-sdk/client-dynamodb": "^3.23.0",
-        "@aws-sdk/client-secrets-manager": "^3.23.0",
-        "@aws-sdk/client-ssm": "^3.23.0",
-        "@aws-sdk/util-base64-node": "^3.23.0",
-        "@aws-sdk/util-dynamodb": "^3.23.0"
+        "@aws-sdk/client-dynamodb": "^3.87.0",
+        "@aws-sdk/client-secrets-manager": "^3.87.0",
+        "@aws-sdk/client-ssm": "^3.87.0",
+        "@aws-sdk/util-base64-node": "^3.55.0",
+        "@aws-sdk/util-dynamodb": "^3.87.0"
     }
 }
