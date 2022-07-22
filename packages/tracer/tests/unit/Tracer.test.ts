@@ -8,10 +8,21 @@ import { Tracer } from '../../src';
 import { Callback, Context, Handler } from 'aws-lambda/handler';
 import { Segment, setContextMissingStrategy, Subsegment } from 'aws-xray-sdk-core';
 import { DynamoDB } from 'aws-sdk';
+import { ProviderServiceInterface } from '../../src/provider';
 
 interface LambdaInterface {
   handler: Handler
 }
+
+type CaptureAsyncFuncMock = jest.SpyInstance<unknown, [name: string, fcn: (subsegment?: Subsegment) => unknown, parent?: Segment | Subsegment]>;
+const createCaptureAsyncFuncMock = function(provider: ProviderServiceInterface): CaptureAsyncFuncMock {
+  return jest.spyOn(provider, 'captureAsyncFunc')
+    .mockImplementation(async (methodName, callBackFn) => {
+      const subsegment = new Subsegment(`### ${methodName}`);
+      jest.spyOn(subsegment, 'flush').mockImplementation(() => null);
+      await callBackFn(subsegment);
+    });
+};
 
 jest.spyOn(console, 'debug').mockImplementation(() => null);
 jest.spyOn(console, 'warn').mockImplementation(() => null);
@@ -579,7 +590,7 @@ describe('Class: Tracer', () => {
   describe('Method: captureLambdaHandler', () => {
   
     test('when used as decorator while tracing is disabled, it does nothing', async () => {
-     
+    
       // Prepare
       const tracer: Tracer = new Tracer({ enabled: false });
       jest.spyOn(tracer.provider, 'getSegment').mockImplementation(() => new Segment('facade', process.env._X_AMZN_TRACE_ID || null));
@@ -763,7 +774,7 @@ describe('Class: Tracer', () => {
         .mockImplementationOnce(() => newSubsegmentFirstInvocation)
         .mockImplementation(() => newSubsegmentSecondInvocation);
       setContextMissingStrategy(() => null);
-      const captureAsyncFuncSpy = jest.spyOn(tracer.provider, 'captureAsyncFunc');
+      const captureAsyncFuncSpy = createCaptureAsyncFuncMock(tracer.provider);
       const putAnnotationSpy = jest.spyOn(tracer, 'putAnnotation');
       class Lambda implements LambdaInterface {
 
@@ -814,7 +825,7 @@ describe('Class: Tracer', () => {
       jest.spyOn(tracer.provider, 'getSegment')
         .mockImplementation(() => newSubsegment);
       setContextMissingStrategy(() => null);
-      const captureAsyncFuncSpy = jest.spyOn(tracer.provider, 'captureAsyncFunc');
+      const captureAsyncFuncSpy = createCaptureAsyncFuncMock(tracer.provider);
       class Lambda implements LambdaInterface {
 
         @tracer.captureLambdaHandler()
@@ -854,7 +865,6 @@ describe('Class: Tracer', () => {
       const captureAsyncFuncSpy = jest.spyOn(tracer.provider, 'captureAsyncFunc');
       class Lambda implements LambdaInterface {
 
-        // TODO: revisit return type & make it more specific
         @tracer.captureMethod()
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -884,6 +894,7 @@ describe('Class: Tracer', () => {
       // Prepare
       const tracer: Tracer = new Tracer();
       const newSubsegment: Segment | Subsegment | undefined = new Subsegment('### dummyMethod');
+      jest.spyOn(newSubsegment, 'flush').mockImplementation(() => null);
       jest.spyOn(tracer.provider, 'getSegment')
         .mockImplementation(() => newSubsegment);
       setContextMissingStrategy(() => null);
@@ -930,7 +941,7 @@ describe('Class: Tracer', () => {
       jest.spyOn(tracer.provider, 'getSegment')
         .mockImplementation(() => newSubsegment);
       setContextMissingStrategy(() => null);
-      const captureAsyncFuncSpy = jest.spyOn(tracer.provider, 'captureAsyncFunc');
+      const captureAsyncFuncSpy = createCaptureAsyncFuncMock(tracer.provider);
       const addErrorSpy = jest.spyOn(newSubsegment, 'addError');
       class Lambda implements LambdaInterface {
 
@@ -949,10 +960,8 @@ describe('Class: Tracer', () => {
 
       }
 
-      // Act
-      await new Lambda().handler(event, context, () => console.log('Lambda invoked!'));
-
-      // Assess
+      // Act / Assess
+      await expect(new Lambda().handler({}, context, () => console.log('Lambda invoked!'))).rejects.toThrowError(Error);
       expect(captureAsyncFuncSpy).toHaveBeenCalledTimes(1);
       expect(newSubsegment).toEqual(expect.objectContaining({
         name: '### dummyMethod',
@@ -960,6 +969,7 @@ describe('Class: Tracer', () => {
       expect('cause' in newSubsegment).toBe(true);
       expect(addErrorSpy).toHaveBeenCalledTimes(1);
       expect(addErrorSpy).toHaveBeenCalledWith(new Error('Exception thrown!'), false);
+      expect.assertions(6);
 
     });
 

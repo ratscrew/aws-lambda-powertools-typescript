@@ -8,8 +8,9 @@
  */
 
 import path from 'path';
-import { randomUUID } from 'crypto';
 import { App, Stack } from 'aws-cdk-lib';
+import { APIGatewayAuthorizerResult } from 'aws-lambda';
+import { v4 } from 'uuid';
 import {
   createStackWithLambdaFunction,
   generateUniqueName,
@@ -26,7 +27,7 @@ import {
   TEARDOWN_TIMEOUT
 } from './constants';
 
-const runtime: string = process.env.RUNTIME || 'nodejs14x';
+const runtime: string = process.env.RUNTIME || 'nodejs16x';
 
 if (!isValidRuntimeKey(runtime)) {
   throw new Error(`Invalid runtime key value: ${runtime}`);
@@ -34,17 +35,22 @@ if (!isValidRuntimeKey(runtime)) {
 
 const LEVEL = InvocationLogs.LEVEL;
 
-const uuid = randomUUID();
+const uuid = v4();
 const stackName = generateUniqueName(RESOURCE_NAME_PREFIX, uuid, runtime, 'BasicFeatures-Middy');
 const functionName = generateUniqueName(RESOURCE_NAME_PREFIX, uuid, runtime, 'BasicFeatures-Middy');
 const lambdaFunctionCodeFile = 'basicFeatures.middy.test.FunctionCode.ts';
 
 // Text to be used by Logger in the Lambda function
 const PERSISTENT_KEY = 'persistentKey';
+const PERSISTENT_KEY_FIRST_INVOCATION_ONLY = 'specialKey';
 const PERSISTENT_VALUE = `a persistent value that will be put in every log ${uuid}`;
+const REMOVABLE_KEY = 'removableKey';
+const REMOVABLE_VALUE = `a persistent value that will be removed and not displayed in any log ${uuid}`;
 const SINGLE_LOG_ITEM_KEY = `keyForSingleLogItem${uuid}`;
 const SINGLE_LOG_ITEM_VALUE = `a value for a single log item${uuid}`;
 const ERROR_MSG = `error-${uuid}`;
+const ARBITRARY_OBJECT_KEY = `keyForArbitraryObject${uuid}`;
+const ARBITRARY_OBJECT_DATA = `arbitrary object data ${uuid}`;
 
 const integTestApp = new App();
 let logGroupName: string; // We do not know it until deployment
@@ -68,10 +74,15 @@ describe(`logger E2E tests basic functionalities (middy) for runtime: ${runtime}
 
         // Text to be used by Logger in the Lambda function
         PERSISTENT_KEY,
+        PERSISTENT_KEY_FIRST_INVOCATION_ONLY,
         PERSISTENT_VALUE,
+        REMOVABLE_KEY,
+        REMOVABLE_VALUE,
         SINGLE_LOG_ITEM_KEY,
         SINGLE_LOG_ITEM_VALUE,
         ERROR_MSG,
+        ARBITRARY_OBJECT_KEY,
+        ARBITRARY_OBJECT_DATA,
       },
       logGroupOutputKey: STACK_OUTPUT_LOG_GROUP,
       runtime: runtime,
@@ -118,9 +129,7 @@ describe(`logger E2E tests basic functionalities (middy) for runtime: ${runtime}
         expect(message).not.toContain(`"cold_start":true`);
       }
     }, TEST_CASE_TIMEOUT);
-  });
 
-  describe('Context data', () => {
     it('should log context information in every log', async () => {
       const logMessages = invocationLogs[0].getFunctionLogs();
 
@@ -134,12 +143,60 @@ describe(`logger E2E tests basic functionalities (middy) for runtime: ${runtime}
     }, TEST_CASE_TIMEOUT);
   });
 
+  describe('Log event', () => {
+
+    it('should log the event on the first invocation', async () => {
+      const firstInvocationMessages = invocationLogs[0].getAllFunctionLogs();
+      let eventLoggedInFirstInvocation = false;
+      for (const message of firstInvocationMessages) {
+        if (message.includes(`event`)) {
+          eventLoggedInFirstInvocation = true;
+          expect(message).toContain(`"event":{"invocation":0}`);
+        }
+      }
+
+      const secondInvocationMessages = invocationLogs[1].getAllFunctionLogs();
+      let eventLoggedInSecondInvocation = false;
+      for (const message of secondInvocationMessages) {
+        if (message.includes(`event`)) {
+          eventLoggedInSecondInvocation = true;
+          expect(message).toContain(`"event":{"invocation":1}`);
+        }
+      }
+
+      expect(eventLoggedInFirstInvocation).toBe(true);
+      expect(eventLoggedInSecondInvocation).toBe(true);
+
+    }, TEST_CASE_TIMEOUT);
+
+  });
+
   describe('Persistent additional log keys and values', () => {
     it('should contain persistent value in every log', async () => {
       const logMessages = invocationLogs[0].getFunctionLogs();
 
       for (const message of logMessages) {
         expect(message).toContain(`"${PERSISTENT_KEY}":"${PERSISTENT_VALUE}"`);
+      }
+    }, TEST_CASE_TIMEOUT);
+
+    it('should not contain persistent keys that were removed on runtime', async () => {
+      const logMessages = invocationLogs[0].getFunctionLogs();
+
+      for (const message of logMessages) {
+        expect(message).not.toContain(`"${REMOVABLE_KEY}":"${REMOVABLE_VALUE}"`);
+      }
+    }, TEST_CASE_TIMEOUT);
+
+    it('with clear state enabled, should not persist keys across invocations', async () => {
+      const firstInvocationMessages = invocationLogs[0].getFunctionLogs();
+      for (const message of firstInvocationMessages) {
+        expect(message).toContain(`"${PERSISTENT_KEY_FIRST_INVOCATION_ONLY}":0`);
+      }
+
+      const secondInvocationMessages = invocationLogs[1].getFunctionLogs();
+      for (const message of secondInvocationMessages) {
+        expect(message).not.toContain(`"${PERSISTENT_KEY_FIRST_INVOCATION_ONLY}":0`);
       }
     }, TEST_CASE_TIMEOUT);
   });
@@ -161,10 +218,32 @@ describe(`logger E2E tests basic functionalities (middy) for runtime: ${runtime}
 
       expect(logMessages).toHaveLength(1);
     }, TEST_CASE_TIMEOUT);
+
+    it('should log additional arbitrary object only once', async () => {
+      const logMessages = invocationLogs[0].getFunctionLogs()
+        .filter(message => message.includes(ARBITRARY_OBJECT_DATA));
+
+      expect(logMessages).toHaveLength(1);
+
+      const logObject = InvocationLogs.parseFunctionLog(logMessages[0]);
+      expect(logObject).toHaveProperty(ARBITRARY_OBJECT_KEY);
+      const arbitrary = logObject[ARBITRARY_OBJECT_KEY] as APIGatewayAuthorizerResult;
+      expect(arbitrary.principalId).toBe(ARBITRARY_OBJECT_DATA);
+      expect(arbitrary.policyDocument).toEqual(expect.objectContaining(
+        {
+          Version: 'Version' + ARBITRARY_OBJECT_DATA,
+          Statement: [{
+            Effect: 'Effect' + ARBITRARY_OBJECT_DATA,
+            Action: 'Action' + ARBITRARY_OBJECT_DATA,
+            Resource: 'Resource' + ARBITRARY_OBJECT_DATA
+          }]
+        }
+      ));
+    }, TEST_CASE_TIMEOUT);
   });
 
   describe('Logging an error object', () => {
-    it('should log additional keys and value only once', async () => {
+    it('should log error only once', async () => {
       const logMessages = invocationLogs[0].getFunctionLogs(LEVEL.ERROR)
         .filter(message => message.includes(ERROR_MSG));
 

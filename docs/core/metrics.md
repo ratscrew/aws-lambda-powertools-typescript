@@ -3,23 +3,23 @@ title: Metrics
 description: Core utility
 ---
 
-!!! warning  "Do not use this library in production"
-
-    AWS Lambda Powertools for TypeScript is currently released as a beta developer preview and is intended strictly for feedback purposes only.  
-    This version is not stable, and significant breaking changes might incur as part of the upcoming [production-ready release](https://github.com/awslabs/aws-lambda-powertools-typescript/milestone/2){target="_blank"}.
-
-    **Do not use this library for production workloads.**
-
 Metrics creates custom metrics asynchronously by logging metrics to standard output following [Amazon CloudWatch Embedded Metric Format (EMF)](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format.html).
 
 These metrics can be visualized through [Amazon CloudWatch Console](https://console.aws.amazon.com/cloudwatch/).
 
 ## Key features
 
-* Aggregate up to 100 metrics using a single CloudWatch EMF object (large JSON blob)
-* Validate against common metric definitions mistakes (metric unit, values, max dimensions, max metrics, etc)
-* Metrics are created asynchronously by CloudWatch service, no custom stacks needed
-* Context manager to create a one off metric with a different dimension
+* Aggregating up to 100 metrics using a single CloudWatch EMF object (large JSON blob).
+* Validating your metrics against common metric definitions mistakes (for example, metric unit, values, max dimensions, max metrics).
+* Metrics are created asynchronously by the CloudWatch service. You do not need any custom stacks, and there is no impact to Lambda function latency.
+* Creating a one-off metric with different dimensions.
+
+<br />
+
+<figure>
+  <img src="../../media/metrics_utility_showcase.png" loading="lazy" alt="Screenshot of the Amazon CloudWatch Console showing an example of business metrics in the Metrics Explorer" />
+  <figcaption>Metrics showcase - Metrics Explorer</figcaption>
+</figure>
 
 ## Terminologies
 
@@ -32,6 +32,7 @@ If you're new to Amazon CloudWatch, there are two terminologies you must be awar
   <img src="../../media/metrics_terminology.png" />
   <figcaption>Metric terminology, visually explained</figcaption>
 </figure>
+
 
 ## Getting started
 
@@ -65,10 +66,10 @@ The library requires two settings. You can set them as environment variables, or
 
 These settings will be used across all metrics emitted:
 
-Setting | Description | Environment variable | Constructor parameter
-------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------
-**Metric namespace** | Logical container where all metrics will be placed e.g. `serverlessAirline` |  `POWERTOOLS_METRICS_NAMESPACE` | `namespace`
-**Service** | Optionally, sets **service** metric dimension across all metrics e.g. `payment` | `POWERTOOLS_SERVICE_NAME` | `serviceName`
+| Setting              | Description                                                                     | Environment variable           | Constructor parameter |
+|----------------------|---------------------------------------------------------------------------------|--------------------------------|-----------------------|
+| **Metric namespace** | Logical container where all metrics will be placed e.g. `serverlessAirline`     | `POWERTOOLS_METRICS_NAMESPACE` | `namespace`           |
+| **Service**          | Optionally, sets **service** metric dimension across all metrics e.g. `payment` | `POWERTOOLS_SERVICE_NAME`      | `serviceName`         |
 
 For a **complete list** of supported environment variables, refer to [this section](./../index.md#environment-variables).
 
@@ -101,7 +102,7 @@ The `Metrics` utility is instantiated outside of the Lambda handler. In doing th
       HelloWorldFunction:
         Type: AWS::Serverless::Function
         Properties:
-          Runtime: nodejs14.x
+          Runtime: nodejs16.x
           Environment:
           Variables:
             POWERTOOLS_SERVICE_NAME: orders
@@ -228,7 +229,7 @@ You can add default dimensions to your metrics by passing them as parameters in 
 
     !!! tip "Using Middy for the first time?"
         You can install Middy by running `npm i @middy/core`.
-        Learn more about [its usage and lifecycle in the official Middy documentation](https://github.com/middyjs/middy#usage){target="_blank"}.
+        Learn more about [its usage and lifecycle in the official Middy documentation](https://middy.js.org/docs/intro/getting-started){target="_blank"}.
 
     ```typescript hl_lines="1-2 11 13"
     import { Metrics, MetricUnits, logMetrics } from '@aws-lambda-powertools/metrics';
@@ -298,54 +299,6 @@ If you do not use the middleware or decorator, you have to flush your metrics ma
     * Maximum of 9 dimensions
     * Namespace is set only once (or none)
     * Metric units must be [supported by CloudWatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDatum.html)
-
-#### Manually
-
-You can manually flush the metrics with `publishStoredMetrics` as follows:
-
-!!! warning
-    Metrics, dimensions and namespace validation still applies.
-
-=== "handler.ts"
-
-    ```typescript hl_lines="7"
-    import { Metrics, MetricUnits } from '@aws-lambda-powertools/metrics';
-
-    const metrics = new Metrics({ namespace: 'serverlessAirline', serviceName: 'orders' });
-
-    export const handler = async (_event: any, _context: any): Promise<void> => {
-        metrics.addMetric('successfulBooking', MetricUnits.Count, 10);
-        metrics.publishStoredMetrics();
-    };
-    ```
-
-=== "Example CloudWatch Logs excerpt"
-
-    ```json hl_lines="2 7 10 15 22"
-    {
-        "successfulBooking": 1.0,
-        "_aws": {
-        "Timestamp": 1592234975665,
-        "CloudWatchMetrics": [
-            {
-            "Namespace": "successfulBooking",
-            "Dimensions": [
-                [
-                "service"
-                ]
-            ],
-            "Metrics": [
-                {
-                "Name": "successfulBooking",
-                "Unit": "Count"
-                }
-            ]
-            }
-        ]
-        },
-        "service": "orders"
-    }
-    ```
 
 #### Middy middleware
 
@@ -439,6 +392,54 @@ The `logMetrics` decorator of the metrics utility can be used when your Lambda h
                 "Unit": "Count"
                 }
             ]
+        },
+        "service": "orders"
+    }
+    ```
+
+#### Manually
+
+You can manually flush the metrics with `publishStoredMetrics` as follows:
+
+!!! warning
+Metrics, dimensions and namespace validation still applies.
+
+=== "handler.ts"
+
+    ```typescript hl_lines="7"
+    import { Metrics, MetricUnits } from '@aws-lambda-powertools/metrics';
+
+    const metrics = new Metrics({ namespace: 'serverlessAirline', serviceName: 'orders' });
+
+    export const handler = async (_event: any, _context: any): Promise<void> => {
+        metrics.addMetric('successfulBooking', MetricUnits.Count, 10);
+        metrics.publishStoredMetrics();
+    };
+    ```
+
+=== "Example CloudWatch Logs excerpt"
+
+    ```json hl_lines="2 7 10 15 22"
+    {
+        "successfulBooking": 1.0,
+        "_aws": {
+        "Timestamp": 1592234975665,
+        "CloudWatchMetrics": [
+            {
+            "Namespace": "successfulBooking",
+            "Dimensions": [
+                [
+                "service"
+                ]
+            ],
+            "Metrics": [
+                {
+                "Name": "successfulBooking",
+                "Unit": "Count"
+                }
+            ]
+            }
+        ]
         },
         "service": "orders"
     }

@@ -3,21 +3,22 @@ title: Logger
 description: Core utility
 ---
 
-!!! warning  "Do not use this library in production"
-
-    AWS Lambda Powertools for TypeScript is currently released as a beta developer preview and is intended strictly for feedback purposes only.  
-    This version is not stable, and significant breaking changes might incur as part of the upcoming [production-ready release](https://github.com/awslabs/aws-lambda-powertools-typescript/milestone/2){target="_blank"}.
-
-    **Do not use this library for production workloads.**
-
 Logger provides an opinionated logger with output structured as JSON.
 
 ## Key features
 
-* Capture key fields from Lambda context, cold start and structures logging output as JSON
-* Log Lambda context when instructed (disabled by default)
-* Log sampling prints all logs for a percentage of invocations (disabled by default)
-* Append additional keys to structured log at any point in time
+* Capturing key fields from the Lambda context, cold starts, and structure logging output as JSON.
+* Logging Lambda invocation events when instructed (disabled by default).
+* Printing all the logs only for a percentage of invocations via log sampling (disabled by default).
+* Appending additional keys to structured logs at any point in time.
+* Providing a custom log formatter (Bring Your Own Formatter) to output logs in a structure compatible with your organization’s Logging RFC.
+
+<br />
+
+<figure>
+  <img src="../../media/logger_utility_showcase.png" loading="lazy" alt="Screenshot of the Amazon CloudWatch Console showing an example of error logged with various log attributes" />
+  <figcaption>Logger showcase - Log attributes</figcaption>
+</figure>
 
 ## Getting started
 
@@ -31,7 +32,7 @@ npm install @aws-lambda-powertools/logger
 
 ### Usage
 
-The `Logger` utility must always be instantiated outside of the Lambda handler. In doing this, subsequent invocations processed by the same instance of your function can reuse these resources. This saves cost by reducing function run time. In addition, `Logger` can keep track of a cold start and inject the appropriate fields into logs.
+The `Logger` utility must always be instantiated outside the Lambda handler. By doing this, subsequent invocations processed by the same instance of your function can reuse these resources. This saves cost by reducing function run time. In addition, `Logger` can keep track of a cold start and inject the appropriate fields into logs.
 
 === "handler.ts"
 
@@ -51,10 +52,10 @@ The library requires two settings. You can set them as environment variables, or
 
 These settings will be used across all logs emitted:
 
-Setting | Description                                                                                                      | Environment variable | Constructor parameter
-------------------------------------------------- |------------------------------------------------------------------------------------------------------------------| ------------------------------------------------- | -------------------------------------------------
-**Logging level** | Sets how verbose Logger should be (INFO, by default). Supported values are: `DEBUG`, `INFO`, `WARN`, `ERROR`     |  `LOG_LEVEL` | `logLevel`
-**Service name** | Sets the name of service of which the Lambda function is part of, that will be present across all log statements | `POWERTOOLS_SERVICE_NAME` | `serviceName`
+| Setting           | Description                                                                                                      | Environment variable      | Constructor parameter |
+|-------------------|------------------------------------------------------------------------------------------------------------------|---------------------------|-----------------------|
+| **Logging level** | Sets how verbose Logger should be (INFO, by default). Supported values are: `DEBUG`, `INFO`, `WARN`, `ERROR`     | `LOG_LEVEL`               | `logLevel`            |
+| **Service name**  | Sets the name of service of which the Lambda function is part of, that will be present across all log statements | `POWERTOOLS_SERVICE_NAME` | `serviceName`         |
 
 For a **complete list** of supported environment variables, refer to [this section](./../index.md#environment-variables).
 
@@ -82,7 +83,7 @@ For a **complete list** of supported environment variables, refer to [this secti
       ShoppingCartApiFunction:
         Type: AWS::Serverless::Function
         Properties:
-          Runtime: nodejs14.x
+          Runtime: nodejs16.x
           Environment:
             Variables:
               LOG_LEVEL: WARN
@@ -93,15 +94,15 @@ For a **complete list** of supported environment variables, refer to [this secti
 
 Your Logger will include the following keys to your structured logging (default log formatter):
 
-Key | Example | Note
-------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------
-**level**: `string` | `INFO` | Logging level set for the Lambda function"s invocation
-**message**: `string` | `Query performed to DynamoDB` | A descriptive, human-readable representation of this log item
-**sampling_rate**: `float` |  `0.1` | When enabled, it prints all the logs of a percentage of invocations, e.g. 10%
-**service**: `string` | `serverlessAirline` | A unique name identifier of the service this Lambda function belongs to, by default `service_undefined`
-**timestamp**: `string` | `2011-10-05T14:48:00.000Z` | Timestamp string in simplified extended ISO format (ISO 8601)
-**xray_trace_id**: `string` | `1-5759e988-bd862e3fe1be46a994272793` | X-Ray Trace ID. This value is always presented in Lambda environment, whether [tracing is enabled](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html){target="_blank"} or not. Logger will always log this value.
-**error**: `Object` | `{ name: "Error", location: "/my-project/handler.ts:18", message: "Unexpected error #1", stack: "[stacktrace]"}` | Optional - An object containing information about the Error passed to the logger
+| Key                         | Example                                                                                                          | Note                                                                                                                                                                                                                            |
+|-----------------------------|------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **level**: `string`         | `INFO`                                                                                                           | Logging level set for the Lambda function"s invocation                                                                                                                                                                          |
+| **message**: `string`       | `Query performed to DynamoDB`                                                                                    | A descriptive, human-readable representation of this log item                                                                                                                                                                   |
+| **sampling_rate**: `float`  | `0.1`                                                                                                            | When enabled, it prints all the logs of a percentage of invocations, e.g. 10%                                                                                                                                                   |
+| **service**: `string`       | `serverlessAirline`                                                                                              | A unique name identifier of the service this Lambda function belongs to, by default `service_undefined`                                                                                                                         |
+| **timestamp**: `string`     | `2011-10-05T14:48:00.000Z`                                                                                       | Timestamp string in simplified extended ISO format (ISO 8601)                                                                                                                                                                   |
+| **xray_trace_id**: `string` | `1-5759e988-bd862e3fe1be46a994272793`                                                                            | X-Ray Trace ID. This value is always presented in Lambda environment, whether [tracing is enabled](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html){target="_blank"} or not. Logger will always log this value. |
+| **error**: `Object`         | `{ name: "Error", location: "/my-project/handler.ts:18", message: "Unexpected error #1", stack: "[stacktrace]"}` | Optional - An object containing information about the Error passed to the logger                                                                                                                                                |
 
 ### Capturing Lambda context info
 
@@ -117,27 +118,11 @@ Key | Example
 **function_arn**: `string` | `arn:aws:lambda:eu-west-1:123456789012:function:shopping-cart-api-lambda-prod-eu-west-1`
 **function_request_id**: `string` | `c6af9ac6-7b61-11e6-9a41-93e812345678`
 
-=== "Manual"
-
-    ```typescript hl_lines="7"
-    import { Logger } from '@aws-lambda-powertools/logger';
-
-    const logger = new Logger();
-
-    export const handler = async (_event, context): Promise<void> => {
-    
-        logger.addContext(context);
-        
-        logger.info('This is an INFO log with some context');
-
-    };
-    ```
-
 === "Middy Middleware"
 
     !!! tip "Using Middy for the first time?"
         You can install Middy by running `npm i @middy/core`.
-        Learn more about [its usage and lifecycle in the official Middy documentation](https://github.com/middyjs/middy#usage){target="_blank"}.
+        Learn more about [its usage and lifecycle in the official Middy documentation](https://middy.js.org/docs/intro/getting-started){target="_blank"}.
 
     ```typescript hl_lines="1-2 10-11"
     import { Logger, injectLambdaContext } from '@aws-lambda-powertools/logger';
@@ -173,6 +158,21 @@ Key | Example
     export const myFunction = new Lambda();
     export const handler = myFunction.handler;
     ```
+=== "Manual"
+
+    ```typescript hl_lines="7"
+    import { Logger } from '@aws-lambda-powertools/logger';
+
+    const logger = new Logger();
+
+    export const handler = async (_event, context): Promise<void> => {
+    
+        logger.addContext(context);
+        
+        logger.info('This is an INFO log with some context');
+
+    };
+    ```
 
 In each case, the printed log will look like this:
 
@@ -193,6 +193,50 @@ In each case, the printed log will look like this:
     }
     ```
 
+#### Log incoming event
+
+When debugging in non-production environments, you can instruct Logger to log the incoming event with the middleware/decorator parameter `logEvent` or via `POWERTOOLS_LOGGER_LOG_EVENT` env var set to `true`.
+
+???+ warning
+This is disabled by default to prevent sensitive info being logged
+
+=== "Middy Middleware"
+
+    ```typescript hl_lines="11"
+    import { Logger, injectLambdaContext } from '@aws-lambda-powertools/logger';
+    import middy from '@middy/core';
+
+    const logger = new Logger();
+
+    const lambdaHandler = async (_event: any, _context: any): Promise<void> => {
+        logger.info('This is an INFO log with some context');
+    };
+
+    export const handler = middy(lambdaHandler)
+        .use(injectLambdaContext(logger, { logEvent: true }));
+    ```
+
+=== "Decorator"
+
+    ```typescript hl_lines="8"
+    import { Logger } from '@aws-lambda-powertools/logger';
+    import { LambdaInterface } from '@aws-lambda-powertools/commons';
+
+    const logger = new Logger();
+    
+    class Lambda implements LambdaInterface {
+        // Set the log event flag to true
+        @logger.injectLambdaContext({ logEvent: true })
+        public async handler(_event: any, _context: any): Promise<void> {
+            logger.info('This is an INFO log with some context');
+        }
+
+    }
+
+    export const myFunction = new Lambda();
+    export const handler = myFunction.handler;
+    ```
+
 ### Appending persistent additional log keys and values
 
 You can append additional persistent keys and values in the logs generated during a Lambda invocation using either mechanism:
@@ -200,9 +244,12 @@ You can append additional persistent keys and values in the logs generated durin
 * Via the Logger's `appendKeys` method, for all log items generated after calling this method
 * Passing them in the Logger's constructor
 
+To remove the keys you added, you can use the `removeKeys` method.
+
+
 === "handler.ts"
 
-    ```typescript hl_lines="5-12 16-23"
+    ```typescript hl_lines="5-13 17-25 30"
     import { Logger } from '@aws-lambda-powertools/logger';
 
     // Add persistent log keys via the constructor
@@ -213,7 +260,8 @@ You can append additional persistent keys and values in the logs generated durin
             logger: {
                 name: '@aws-lambda-powertools/logger',
                 version: '0.0.1',
-            }
+            },
+            extra_key: "some-value"
         }
     });
 
@@ -224,10 +272,14 @@ You can append additional persistent keys and values in the logs generated durin
     //     logger: {
     //         name: '@aws-lambda-powertools/logger',
     //         version: '0.0.1',
-    //     }
+    //     },
+    //     extra_key: "some-value"
     // });    
 
     export const handler = async (_event: any, _context: any): Promise<unknown> => {
+
+        // If you don't want to log the "extra_key" attribute in your logs, you can remove it
+        logger.removeKeys(["extra_key"])
     
         // This info log will print all extra custom attributes added above
         // Extra attributes: logger object with name and version of the logger library, awsAccountId, awsRegion
@@ -271,36 +323,159 @@ You can append additional persistent keys and values in the logs generated durin
     }
     ```
 
+
 !!! tip "Logger will automatically ignore any key with an `undefined` value"
 
-### Appending additional log keys and values to a single log item
+#### Clearing all state
 
-You can append additional keys and values in a single log item passing them as parameters.
-Pass a string for logging it with default key name `extra`. Alternatively, pass one or multiple objects with custom keys.
-If you already have an object containing a `message` key and an additional property, you can pass this object directly.
+The Logger utility is commonly initialized in the global scope, outside the handler function.
+When you attach persistent log attributes through the `persistentLogAttributes` constructor option or via the `appendKeys`, `addPersistentLogAttributes` methods, this data is attached to the Logger instance.  
+
+Due to the [Lambda Execution Context reuse](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-context.html), this means those persistent log attributes may be reused across invocations.
+If you want to make sure that persistent attributes added **inside the handler function** code are not persisted across invocations, you can set the parameter `clearState` as `true`  in the `injectLambdaContext` middleware or decorator.
+
+=== "Middy Middleware"
+
+    ```typescript hl_lines="27"
+    import { Logger, injectLambdaContext } from '@aws-lambda-powertools/logger';
+    import middy from '@middy/core';
+
+    // Persistent attributes added outside the handler will be 
+    // cached across invocations
+    const logger = new Logger({
+        logLevel: 'DEBUG',
+        persistentLogAttributes: {
+            foo: "bar",
+            biz: "baz"
+        }
+    });
+
+    const lambdaHandler = async (event: { special_key: string }, _context: any): Promise<void> => {
+        // Persistent attributes added inside the handler will NOT be cached
+        // across invocations
+        if (event['special_key'] === '123456') {
+            logger.appendKeys({
+                details: { special_key: event['special_key'] }
+            });
+        }
+        logger.debug('This is a DEBUG log');
+    };
+
+    // Enable the clear state flag
+    export const handler = middy(lambdaHandler)
+        .use(injectLambdaContext(logger, { clearState: true }));
+    ```
+
+=== "Decorator"
+
+    ```typescript hl_lines="16"
+    import { Logger } from '@aws-lambda-powertools/logger';
+    import { LambdaInterface } from '@aws-lambda-powertools/commons';
+
+    // Persistent attributes added outside the handler will be 
+    // cached across invocations
+    const logger = new Logger({
+        logLevel: 'DEBUG',
+        persistentLogAttributes: {
+            foo: "bar",
+            biz: "baz"
+        }
+    });
+    
+    class Lambda implements LambdaInterface {
+        // Enable the clear state flag
+        @logger.injectLambdaContext({ clearState: true })
+        public async handler(_event: any, _context: any): Promise<void> {
+            // Persistent attributes added inside the handler will NOT be cached
+            // across invocations
+            if (event['special_key'] === '123456'){
+                logger.appendKeys({
+                    details: { special_key: '123456' }
+                });
+            }
+            logger.debug('This is a DEBUG log');
+        }
+
+    }
+
+    export const myFunction = new Lambda();
+    export const handler = myFunction.handler;
+    ```
+
+In each case, the printed log will look like this:
+
+=== "First invocation"
+
+    ```json hl_lines="2 4-7"
+    {
+        "biz": "baz",
+        "cold_start": true,
+        "details": {
+            "special_key": "123456",
+        },
+        "foo": "bar",
+        "function_arn": "arn:aws:lambda:eu-west-1:123456789012:function:foo-bar-function",
+        "function_memory_size": 128,
+        "function_name": "foo-bar-function",
+        "function_request_id": "abcdef123456abcdef123456",
+        "level": "DEBUG",
+        "message": "This is a DEBUG log with the user_id",
+        "service": "hello-world",
+        "timestamp": "2021-12-12T22:32:54.670Z",
+        "xray_trace_id": "1-5759e988-bd862e3fe1be46a994272793"
+    }
+    ```
+=== "Second invocation"
+
+    ```json hl_lines="2 4"
+    {
+        "biz": "baz",
+        "cold_start": false,
+        "foo": "bar",
+        "function_arn": "arn:aws:lambda:eu-west-1:123456789012:function:foo-bar-function",
+        "function_memory_size": 128,
+        "function_name": "foo-bar-function",
+        "function_request_id": "abcdef123456abcdef123456",
+        "level": "DEBUG",
+        "message": "This is a DEBUG log with the user_id",
+        "service": "hello-world",
+        "timestamp": "2021-12-12T22:40:23.120Z",
+        "xray_trace_id": "1-5759e988-bd862e3fe1be46a994272793"
+    }
+    ```
+
+
+### Appending additional data to a single log item
+
+You can append additional data to a single log item by passing objects as additional parameters.
+
+* Pass a simple string for logging it with default key name `extra`
+* Pass one or multiple objects containing arbitrary data to be logged. Each data object should be placed in an enclosing object as a single property value, you can name this property as you need: `{ myData: arbitraryObjectToLog }`
+* If you already have an object containing a `message` key and an additional property, you can pass this object directly
 
 === "handler.ts"
 
-    ```typescript hl_lines="14 18-19 23 31"
+    ```typescript hl_lines="14 18-20 24 32"
     import { Logger } from '@aws-lambda-powertools/logger';
 
     const logger = new Logger();
     
-    export const handler = async (_event: any, _context: any): Promise<unknown> => {
+    export const handler = async (event: any, _context: any): Promise<unknown> => {
     
         const myImportantVariable = {
             foo: 'bar'
         };
         
-        // Pass additional keys and values in single log items
+        // Log additional data in single log items
         
         // As second parameter
         logger.info('This is a log with an extra variable', { data: myImportantVariable });
         
-        // You can also pass multiple parameters
-        logger.info('This is a log with 2 extra variables',
+        // You can also pass multiple parameters containing arbitrary objects
+        logger.info('This is a log with 3 extra objects',
             { data: myImportantVariable },
-            { correlationIds: { myCustomCorrelationId: 'foo-bar-baz' } }
+            { correlationIds: { myCustomCorrelationId: 'foo-bar-baz' } },
+            { lambdaEvent: event }
         );
 
         // Simply pass a string for logging additional data
@@ -322,14 +497,14 @@ If you already have an object containing a `message` key and an additional prope
     ```
 === "Example CloudWatch Logs excerpt"
 
-    ```json hl_lines="7 15-16 24 32"
+    ```json hl_lines="7 15-21 28 37"
     {
         "level": "INFO",
         "message": "This is a log with an extra variable",
         "service": "serverlessAirline",
         "timestamp": "2021-12-12T22:06:17.463Z",
         "xray_trace_id": "abcdef123456abcdef123456abcdef123456",
-        "data": { foo: "bar" }
+        "data": { "foo": "bar" }
     }
     {
         "level": "INFO",
@@ -338,7 +513,12 @@ If you already have an object containing a `message` key and an additional prope
         "timestamp": "2021-12-12T22:06:17.466Z",
         "xray_trace_id": "abcdef123456abcdef123456abcdef123456",
         "data": { "foo": "bar" },
-        "correlationIds": { "myCustomCorrelationId": "foo-bar-baz" }
+        "correlationIds": { "myCustomCorrelationId": "foo-bar-baz" },
+        "lambdaEvent": { 
+            "exampleEventData": {
+                "eventValue": 42
+            }
+        }
     }
     {
         "level": "INFO",
@@ -422,6 +602,7 @@ The error will be logged with default key name `error`, but you can also pass yo
 
 !!! tip "Logging errors and log level"
     You can also log errors using the `warn`, `info`, and `debug` methods. Be aware of the log level though, you might miss those  errors when analyzing the log later depending on the log level configuration.
+
 
 ## Advanced
 
@@ -779,4 +960,4 @@ This is a Jest sample that provides the minimum information necessary for Logger
     ```
 
 !!! tip
-    If you don't want to declare your own dummy Lambda Context, you can use [`ContextExamples.helloworldContext`](https://github.com/awslabs/aws-lambda-powertools-typescript/blob/main/packages/commons/src/tests/resources/contexts/hello-world.ts#L3-L16) from [`@aws-lambda-powertools/commons`](https://www.npmjs.com/package/@aws-lambda-powertools/commons).
+    If you don't want to declare your own dummy Lambda Context, you can use [`ContextExamples.helloworldContext`](https://github.com/awslabs/aws-lambda-powertools-typescript/blob/main/packages/commons/src/samples/resources/contexts/hello-world.ts#L3-L16) from [`@aws-lambda-powertools/commons`](https://www.npmjs.com/package/@aws-lambda-powertools/commons).

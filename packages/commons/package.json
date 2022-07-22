@@ -1,6 +1,6 @@
 {
   "name": "@aws-lambda-powertools/commons",
-  "version": "0.9.0",
+  "version": "1.0.2",
   "description": "A shared utility package for AWS Lambda Powertools for TypeScript libraries",
   "author": {
     "name": "Amazon Web Services",
@@ -19,6 +19,7 @@
     "lint": "eslint --ext .ts --fix --no-error-on-unmatched-pattern src tests",
     "format": "eslint --fix --ext .ts --fix --no-error-on-unmatched-pattern src tests",
     "package": "mkdir -p dist/ && npm pack && mv *.tgz dist/",
+    "package-bundle": "../../package-bundler.sh ${LERNA_PACKAGE_NAME}-bundle ./dist/",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
     "preversion": "npm run lint",
@@ -39,5 +40,12 @@
   },
   "bugs": {
     "url": "https://github.com/awslabs/aws-lambda-powertools-typescript/issues"
-  }
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "powertools",
+    "serverless",
+    "nodejs"
+  ]
 }

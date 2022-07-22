@@ -204,6 +204,20 @@ describe('Helper: createTracer function', () => {
 
   describe('Environment Variables configs', () => {
 
+    test('when AWS_EXECUTION_ENV environment variable is equal to AWS_Lambda_amplify-mock, tracing is disabled', () => {
+      // Prepare
+      process.env.AWS_EXECUTION_ENV = 'AWS_Lambda_amplify-mock';
+
+      // Act
+      const tracer = createTracer();
+
+      // Assess
+      expect(tracer).toEqual(expect.objectContaining({
+        tracingEnabled: false,
+      }));
+
+    });
+
     test('when AWS_SAM_LOCAL environment variable is set, tracing is disabled', () => {
       // Prepare
       process.env.AWS_SAM_LOCAL = 'true';
@@ -220,7 +234,7 @@ describe('Helper: createTracer function', () => {
 
     test('when AWS_EXECUTION_ENV environment variable is set, tracing is enabled', () => {
       // Prepare
-      process.env.AWS_EXECUTION_ENV = 'nodejs14.x';
+      process.env.AWS_EXECUTION_ENV = 'nodejs16.x';
 
       // Act
       const tracer = createTracer();
